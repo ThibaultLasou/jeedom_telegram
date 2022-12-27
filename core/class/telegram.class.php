@@ -188,6 +188,11 @@ class telegramCmd extends cmd {
 		if ($this->getType() == 'info') {
 			return;
 		}
+
+		$max_photo_size			= 10000000;
+		$max_other_file_size 	= 50000000;
+		$max_media_by_group		= 10;
+
 		$data = array();
 		$options = array();
 		if (isset($_options['title'])) {
@@ -335,9 +340,6 @@ class telegramCmd extends cmd {
 			$this->sendTelegram($url, 'message', $to, $data);
 		}
 
-		$max_photo_size 	= 10000000;
-		$max_other_file_size 	= 50000000;
-
 		if (isset($_options['files']) && is_array($_options['files'])) {
 		$i=0;
 		$file_type = array();
@@ -368,45 +370,43 @@ class telegramCmd extends cmd {
 			{
 				$url = $request_http . '/sendMediaGroup';
 				$media_array = array();
+				$i=0;
 				foreach ($_options['files'] as $file) {
 					$media = array();
 					$media['type'] = $types[0];
 					$media['media'] = 'attach://' . $file;
 					array_push($media_array, $media);
 					$data[$file] = new CURLFile(realpath($file));
+					$i++;
+					if($i == $max_media_by_group)
+					{
+						$media_array[0]['caption'] = $text;
+						$data['media'] = json_encode($media_array);
+						$this->sendTelegram($url, 'file', $to, $data);
+						$i=0;
+					}
 				}
-				$media_array[0]['caption'] = $text;
-				$data['media'] = json_encode($media_array);
-				$this->sendTelegram($url, 'file', $to, $data);
 			}
 			else
 			{
 				foreach ($_options['files'] as $file) {
+					$data[$file_type[$file]] = new CURLFile(realpath($file));
+					$data['caption'] = $text;
 					switch($file_type[$file])
 					{
 						case 'animation':
-							$data['animation'] = new CURLFile(realpath($file));
-							$data['caption'] = $text;
 							$url = $request_http . '/sendAnimation';
 							break;
 						case 'photo':
-							$data['photo'] = new CURLFile(realpath($file));
-							$data['caption'] = $text;
 							$url = $request_http . '/sendPhoto';
 							break;
 						case 'audio':
-							$data['audio'] = new CURLFile(realpath($file));
-							$data['title'] = $text;
 							$url = $request_http . '/sendAudio';
 							break;
 						case 'video':
-							$data['video'] = new CURLFile(realpath($file));
-							$data['caption'] = $text;
 							$url = $request_http . '/sendVideo';
 							break;
 						case 'document':
-							$data['document'] = new CURLFile(realpath($file));
-							$data['caption'] = $text;
 							$url = $request_http . '/sendDocument';
 							break;
 					}
